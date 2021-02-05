@@ -1,12 +1,14 @@
 import pandas as pd
-from decimal import Decimal, ROUND_HALF_EVEN
+from decimal import Decimal, ROUND_05UP, ROUND_CEILING, ROUND_DOWN, ROUND_FLOOR, ROUND_HALF_DOWN, ROUND_HALF_EVEN, ROUND_HALF_UP, ROUND_UP
 
+from .quantizer import QuantizeCtx
 
 class FinancialCalculator:
     
-
-    TWO_CENTS = (Decimal("0.00"), ROUND_HALF_EVEN)
-    FOR_PLACES = Decimal("0.0000")
+    to_7places = QuantizeCtx(Decimal("0.0000000"), ROUND_HALF_DOWN).apply
+    to_2places = QuantizeCtx(Decimal("0.00"), ROUND_HALF_EVEN).apply
+    # TWO_CENTS = (Decimal("0.00"), ROUND_UP)
+    # FOR_PLACES = Decimal("0.0000")
 
     def __init__(
             self, 
@@ -21,13 +23,30 @@ class FinancialCalculator:
         ):
         self.current_age = current_age
         self.goal_age = goal_age
-        self.goal_monthly_withdraw = Decimal(goal_monthly_withdraw)
-        self.initial_patrimony = Decimal(initial_patrimony)
-        self.monthly_contribution = Decimal(monthly_contribution)
-        self.current_interest = Decimal().from_float(current_interest/100).quantize(self.FOR_PLACES, ROUND_HALF_EVEN)
-        self.future_interest = Decimal().from_float(future_interest/100).quantize(self.FOR_PLACES, ROUND_HALF_EVEN)
+        self.goal_monthly_withdraw = Decimal(f"{goal_monthly_withdraw}")
+        self.initial_patrimony = Decimal(f"{initial_patrimony}")
+        self.monthly_contribution = Decimal(f"{monthly_contribution}")
+        self.input_current_interest = current_interest
+        self.input_future_interest = future_interest
         self.max_age = max_age
 
+    
+    @property
+    def decimal_current_yield(self):
+        return self._to_percent(self._to_decimal(self.input_current_interest))
+    
+    @property
+    def decimal_future_yield(self):
+        return self._to_percent((self._to_decimal(self.input_future_interest)))
+
+    @property
+    def monthly_yield_current(self):
+        return self._convert_to_monthly_interest(self.decimal_current_yield)
+
+    @property
+    def monthly_yield_goal(self):
+        return self._convert_to_monthly_interest(self.decimal_future_yield)
+   
     @property
     def contribution_years(self):
         return self.goal_age - self.current_age
@@ -41,20 +60,12 @@ class FinancialCalculator:
         return (self.max_age - self.goal_age) * 12
     
     @property
-    def monthly_yield_current(self):
-        return self._convert_to_monthly_yield(self.current_interest)
-
-    @property
-    def monthly_yield_goal(self):
-        return self._convert_to_monthly_yield(self.future_interest)
-
-    @property
     def consumable_patrimony_value(self):
-        return self.goal_monthly_withdraw * ((1 + self.monthly_yield_goal)**self.consumption_months - 1)/((1 + self.monthly_yield_goal)**self.consumption_months * self.monthly_yield_goal)
+        return self.present_value(self.goal_monthly_withdraw, self.monthly_yield_goal, self.consumption_months)
 
     @property
-    def profitable_patrimony_value(self):
-        return (self.goal_monthly_withdraw/self.monthly_yield_goal).quantize(*self.TWO_CENTS)
+    def infinity_patrimony_value(self):
+        return self.to_2places((self.goal_monthly_withdraw/self.monthly_yield_goal))
     
     def create_monthly_growth_history(self):
         last_month_value = self.initial_patrimony
@@ -73,13 +84,16 @@ class FinancialCalculator:
             year_plus_interest = (last_year_value * (1 + self.current_interest)) + (self.monthly_contribution * 12)
             year_plus_interest.quantize(*self.TWO_CENTS)
             growth_history.append(year_plus_interest)
-            last_month_value = year_plus_interest
+            # last_month_value = year_plus_interest
         return growth_history
 
-
-    def create_yearly_growth_table(self):
-        pass
-
+    def create_consumable_history(self):
+        last_month = self.consumable_patrimony_value
+        history = [last_month]
+        for month in range(self.consumption_months):
+            current_month = last_month * (Decimal())
+            pass
+        
     def create_patrimony_consume_table(self):
         pass
     
@@ -87,11 +101,48 @@ class FinancialCalculator:
         pass
 
     @staticmethod
-    def _convert_to_monthly_yield(anual_profitability):
-        FIVE_PLACES = Decimal("0.000000")
-        value = Decimal((1 + anual_profitability)**Decimal(1/12) - 1)
-        return value.quantize(FIVE_PLACES, ROUND_HALF_EVEN)
+    def present_value(payment, interest, period, is_postecipate = True):
+        """payment * (((1 + interest)**period) - 1)/(((1 + interest)**(period-1)) * interest)"""
+
+        interest = Decimal(str(interest))
+        period = Decimal(str(period))
+        payment = Decimal(str(payment))
+        dividend_a = Decimal("1") + interest
+        dividend_b = (dividend_a ** period).quantize(Decimal("0.00000000"), ROUND_FLOOR)
+        dividend_total = dividend_b - Decimal("1")
+        
+        if is_postecipate:
+            divisor_total = (dividend_b * interest).quantize(Decimal("0.0000000000"), ROUND_FLOOR)
+        else:
+            divisor_a = (dividend_a ** (period - Decimal("1")))
+            divisor_total = (divisor_a * interest)
+
+        division_result = (dividend_total / divisor_total).quantize(Decimal("0.00000"), ROUND_FLOOR)
+        result = payment * division_result
+
+        return result.quantize(Decimal("0.00"))
+
+    @staticmethod
+    def payment_value(future_value, interest, period):
+        if type(interest) == float:
+            interest = Decimal.from_float(interest)
+        result = Decimal(future_value) * ( interest / ((1 + interest)**period - 1))
+        return result.quantize(Decimal("0.00"))
+
+    @staticmethod
+    def future_value(monthly_contribution, interest, period):
+        return monthly_contribution*(((1 + interest)**period) - 1)/interest 
     
+    def _convert_to_monthly_interest(self,anual_interest):
+        result = ((Decimal("1") + anual_interest)**(Decimal("1")/Decimal("12"))) - 1
+        return self.to_7places(result)
+    
+    def _to_decimal(self,value):
+        value = str(value)
+        if ',' in value:
+            value = value.replace(',', '.')
+        return self.to_7places(Decimal(value))
+
     @staticmethod
     def _to_percent(value):
-        return Decimal(value/100)
+        return Decimal(value/Decimal("100"))
