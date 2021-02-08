@@ -1,7 +1,5 @@
 from decimal import Decimal
 
-
-
 class QuantizeCtx:
     """ For decimal values only.
     Create a context for decimal's quantize(decimal_places and rounding) and apply it with 'apply' method"""

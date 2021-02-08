@@ -1,12 +1,9 @@
 # Standard Library imports
-import sys
-import subprocess
 import unittest
 from decimal import Decimal
 
 # Local application imports
 from src.calculator import FinancialCalculator
-
 
 
 class FinancialCalculatorTest(unittest.TestCase):
