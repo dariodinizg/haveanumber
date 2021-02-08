@@ -5,12 +5,9 @@ app = Flask("__name__")
 
 @app.route('/calculator', methods=['POST'])
 def calculator():
-    if not request.json:
+    if not request.form:
         return { "msg":"got nothing!"}
-    data = {
-        "msg1": request.json['arg1'],
-        "msg2": request.json['arg2']
-    }
+    data = request.form
     return jsonify(data), 201
 
 @app.route("/")

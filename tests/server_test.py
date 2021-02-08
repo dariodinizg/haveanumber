@@ -23,4 +23,8 @@ class ServerTest(unittest.TestCase):
             "max_age": "80"
         }
         response = requests.post(endpoint, data=post_body)
-        self.assertEqual(response.text,"a")
+        self.assertEqual(response.text,post_body)
+
+
+if __name__ == "__main__":
+    unittest.main()
