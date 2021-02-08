@@ -21,14 +21,14 @@ class FinancialCalculator:
             future_interest, 
             max_age
         ):
-        self.current_age = current_age
-        self.goal_age = goal_age
+        self.current_age = int(current_age)
+        self.goal_age = int(goal_age)
         self.goal_monthly_withdraw = Decimal(f"{goal_monthly_withdraw}")
         self.initial_patrimony = Decimal(f"{initial_patrimony}")
         self.monthly_contribution = Decimal(f"{monthly_contribution}")
         self.input_current_interest = current_interest
         self.input_future_interest = future_interest
-        self.max_age = max_age
+        self.max_age = int(max_age)
 
     
     @property

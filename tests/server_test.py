@@ -1,18 +1,13 @@
 import unittest
 import requests
+import json
 
 # from src.server import app
 
 class ServerTest(unittest.TestCase):
 
-    url = "http://127.0.0.1:5000/"
-    def test_server_running(self):
-        response = requests.get(self.url)
-        self.assertEqual(response.status_code, 200)
-    
-    def test_main(self):
-        endpoint = self.url + "calculator"
-        post_body = {
+    def setUp(self):
+        self.post_body = {
             "current_age": "30",
             "goal_age": "60",
             "goal_monthly_withdraw": "3500",
@@ -22,8 +17,26 @@ class ServerTest(unittest.TestCase):
             "future_interest":"7,5",
             "max_age": "80"
         }
-        response = requests.post(endpoint, data=post_body)
-        self.assertEqual(response.text,post_body)
+        self.url = "http://127.0.0.1:5000/"
+        self.response = requests.post(self.url, data=self.post_body)
+
+    def test_server_running(self):
+        response = requests.get(self.url)
+        self.assertEqual(response.status_code, 200)
+    
+    def test_post_body(self):
+    #     response_proof = {
+    #     "decimal_current_yield": ,
+    #     "decimal_future_yield": ,
+    #     "monthly_yield_current": ,
+    #     "monthly_yield_goal": ,
+    #     "contribution_years": ,
+    #     "contribution_months": ,
+    #     "consumption_months": ,
+    #     "consumable_patrimony_value": ,
+    #     "infinity_patrimony_value": ,
+    # }
+        self.assertEqual(self.response.text, "")
 
 
 if __name__ == "__main__":
